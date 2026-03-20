@@ -1,0 +1,17 @@
+name: wingmdao
+channels:
+  - conda-forge
+  - smdogroup
+dependencies:
+  - python=3.10
+  - mamba
+  - tacs
+  - petsc4py
+  - mpi4py
+  - pynastran
+  - pip
+  - pip:
+      - "openmdao[all]"
+      - mphys
+      - matplotlib
+      - numpy
