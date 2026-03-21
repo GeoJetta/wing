@@ -91,9 +91,9 @@ Each run directory should contain, where applicable:
 
 ## Current status
 - Current milestone: M0
-- Overall status: not started
+- Overall status: blocked
 - Last completed milestone: none
-- Next recommended action: implement M0
+- Next recommended action: resolve the local build backend bootstrap so editable installs can run without external package index access
 - Main execution choice: pyTACS shell baseline first, MPhys only after the cantilever baseline is verified
 - Known dependency gap: the geometry seed file referenced in the spec is not present in the uploaded workspace
 
@@ -139,7 +139,7 @@ Each run directory should contain, where applicable:
 ## Milestones
 
 ### M0 - Bootstrap the Python environment and repo tooling
-Status: not started
+Status: blocked
 
 Goal:
 Create the repository skeleton needed to support a real TACS project and make the developer workflow predictable.
@@ -552,10 +552,13 @@ Artifacts:
 - `artifacts/comparison/`
 
 ## Decision log
-- No decisions recorded yet.
+- Added a lightweight top-level `wing_trade_study` package shim so `python -m wing_trade_study.cli.main ...` works from a source checkout before editable install succeeds.
+- Kept solver dependency probing in `doctor` as an explicit availability check that returns machine-readable status and nonzero exit when the solver stack is unavailable.
 
 ## Blockers
 - The geometry seed file referenced in `docs/spec.md` is not currently present in the uploaded workspace. Current uploaded file `openmdao_constraint.py` is only a minimal constraint helper.
+- `python -m pip install -e ".[dev]"` fails in this environment because pip cannot reach the package index and cannot install build requirements (`setuptools>=68`).
+- `python -m pip install -e ".[dev]" --no-build-isolation` also fails because the interpreter image does not have `setuptools` installed (`BackendUnavailable: Cannot import 'setuptools.build_meta'`).
 
 ## Rules for updating this file after each run
 At the end of every Codex run:
