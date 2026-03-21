@@ -7,8 +7,8 @@ project can extend it with discipline-specific constraints.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,8 @@ def add_constraints(model, constraints: Iterable[ConstraintSpec]) -> None:
             "equals": spec.equals,
             "ref": spec.ref,
         }
-        model.add_constraint(spec.name, **{k: v for k, v in kwargs.items() if v is not None})
+        filtered_kwargs = {k: v for k, v in kwargs.items() if v is not None}
+        model.add_constraint(spec.name, **filtered_kwargs)
 
 
 DEFAULT_CONSTRAINTS: tuple[ConstraintSpec, ...] = (

@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wing-trade-study"
+version = "0.1.0"
+description = "Structural trade study tooling for cantilever and strut-braced wing concepts"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Wing Trade Study Contributors" }]
+dependencies = [
+  "openmdao==3.41.0",
+  "mphys==2.0.0",
+  "tacs==3.10.1",
+  "pydantic==2.11.9",
+  "PyYAML==6.0.3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "black==26.0.0",
+  "mypy==1.18.2",
+  "pytest==8.4.2",
+  "ruff==0.13.2",
+]
+
+[project.scripts]
+wing-trade-study = "wing_trade_study.cli.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+extend-exclude = "openmdao/constraints/openmdao_constraint.py"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+extend-exclude = ["openmdao/constraints/openmdao_constraint.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["wing_trade_study"]
