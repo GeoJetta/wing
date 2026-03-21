@@ -1,0 +1,11 @@
+model = "gpt-5.4"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "cached"
+
+# Treat the repo root as the project root when these markers are present.
+project_root_markers = [".git", "pyproject.toml"]
+
+# Project-scoped config is loaded only when the repository is trusted.
+# Keep AGENTS.md as the permanent auto-loaded instruction file.
+# Read plan.md explicitly from the task prompt rather than relying on fallback discovery.
