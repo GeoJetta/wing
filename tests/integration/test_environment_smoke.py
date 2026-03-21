@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 import subprocess
 import sys
 from importlib import metadata
@@ -35,11 +36,15 @@ def test_import_and_distribution_status_are_consistent() -> None:
 
 
 def test_doctor_command_reports_json_status_and_exit_code() -> None:
+    env = dict(os.environ)
+    env["PYTHONPATH"] = "src"
+
     result = subprocess.run(
         [sys.executable, "-m", "wing_trade_study.cli.main", "doctor"],
         check=False,
         capture_output=True,
         text=True,
+        env=env,
     )
 
     payload = json.loads(result.stdout)
