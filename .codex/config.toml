@@ -1,7 +1,10 @@
 model = "gpt-5.4"
-approval_policy = "on-request"
+approval_policy = "never"
 sandbox_mode = "workspace-write"
-web_search = "cached"
+#web_search = "cached"
+
+[sandbox_workspace_write]
+network_access = true
 
 # Treat the repo root as the project root when these markers are present.
 project_root_markers = [".git", "pyproject.toml"]
