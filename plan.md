@@ -1,46 +1,78 @@
 # plan.md — Wing Trade Study Execution Plan
 
 ## Purpose of this file
-This is the executable roadmap and status log for Codex runs.
+This file is the active execution plan for the repository.
 
 Use:
-- `AGENTS.md` for permanent operating rules.
-- `docs/spec.md` for the stable project objective and assumptions.
-- `plan.md` for milestone order, status, validation commands, blockers, and next steps.
+- `AGENTS.md` for permanent repo rules and quality gates.
+- `docs/spec.md` for the stable project objective, scope, and assumptions.
+- `plan.md` for milestone order, current status, artifact expectations, validation commands, blockers, and next actions.
 
-## What this project must accomplish
-Build a reproducible structural trade study that answers a simple question with real analysis outputs:
+## Project objective
+Build a reproducible structural trade study that answers this question with real solver-backed outputs:
 
-**For the target commuter-aircraft wing, when do we get a lighter or better-constrained structure with a strut-braced wing than with a cantilever wing?**
+**For the target commuter-aircraft wing, under the same loads and constraints, when is a strut-braced wing lighter or better-constrained than a cantilever wing?**
 
-The final project is successful only if it can:
-1. Run a cantilever structural case from config to saved artifacts.
-2. Run a comparable strut-braced structural case from config to saved artifacts.
-3. Use TACS for the real structural solves.
-4. Use OpenMDAO/MPhys for design variables, constraints, and optimization studies.
-5. Save plots, contour maps, and summary tables that support a side-by-side comparison.
-6. Reproduce the headline results from documented commands.
+The project is only considered complete when it can:
+1. Run a cantilever structural case from config to saved plots and machine-readable outputs.
+2. Run a comparable strut-braced structural case from config to saved plots and machine-readable outputs.
+3. Use the real TACS solve path for the reported structural results.
+4. Use OpenMDAO/MPhys for the optimization and design-study layer after the structural baseline is verified.
+5. Save contour plots, summary tables, and comparison artifacts that support a side-by-side decision.
+6. Reproduce the headline results from documented commands in a clean environment.
+
+## Execution strategy
+The project will follow a **pyTACS-first, MPhys-second** workflow.
+
+Why:
+- TACS is the core solver risk, so the first job is proving that the structural environment is real and usable.
+- pyTACS is the shortest path to a working shell-based structural baseline.
+- MPhys and OpenMDAO should be added only after the cantilever shell model is running and producing trustworthy artifacts.
+- The strut-braced case should be created by copying and extending the cantilever path, not by inventing a second unrelated stack.
+
+This means the practical sequence is:
+1. Bring up Python + TACS + pyTACS + OpenMDAO + MPhys.
+2. Reproduce a known pyTACS shell cantilever example inside this repository.
+3. Replace the example geometry with the project cantilever wing-box geometry.
+4. Add project loads, design variables, and constraints.
+5. Verify and lock a cantilever baseline.
+6. Wrap that working case in OpenMDAO/MPhys.
+7. Run the cantilever trade study.
+8. Copy the cantilever case and extend it into the strut-braced case.
+9. Run the strut trade study.
+10. Compare both architectures.
 
 ## Non-goals for the first complete version
-- No CFD or aeroelastic coupling beyond what is needed for structural loads input.
+- No CFD or aeroelastic coupling beyond externally supplied structural loads.
 - No certification-level load envelope.
-- No local fastener/joint detail FEA.
+- No detailed joint, fastener, or local failure FEA.
 - No manufacturing or operating cost model beyond simple structural-weight comparison.
+- No custom framework layered on top of TACS/OpenMDAO/MPhys.
 
-## Working model assumptions for the first complete version
-- The wing primary structure is represented as a wing box with an initial spar concept.
-- The cantilever case is built first and becomes the template for the strut-braced case.
-- The strut can initially be modeled as a simpler 1D member or equivalent structural element attached to the wing box.
-- Load cases start simple and become more representative over time; they do not need to start comprehensive.
-- The project must never report proxy or placeholder results as if they came from TACS.
+## Starting assumptions and open dependencies
+- The wing is modeled with shell-based wing-box structure from the start.
+- The initial cantilever case is the reference model and template for the strut case.
+- The strut can start as a simpler 1D structural member attached to the shell wing box.
+- Loads begin with one useful static case and expand only after that case is verified.
+- The repository must not report placeholder values as if they came from TACS.
 
-## Standard output locations
-All milestone work should save artifacts under `artifacts/` using a predictable layout.
+### Important note on the seed file
+`docs/spec.md` refers to `openmdao_semiwing_boxbeam_constraints.py` as the seed source for geometry and constraints.
+The uploaded file currently available in the workspace is `openmdao_constraint.py`, which is only a small OpenMDAO constraint helper and **does not contain the geometry seed implied by the spec**.
+
+Plan implication:
+- treat the current uploaded constraint helper as useful for later OpenMDAO constraint registration,
+- but do **not** treat it as the geometry source of truth,
+- and keep the geometry-import milestone scoped so it can either consume the real seed script when provided or proceed from an explicit internal cantilever geometry definition.
+
+## Standard artifact layout
+All generated outputs should live under `artifacts/`.
 
 ```text
 artifacts/
-├─ env_smoke/
+├─ env/
 ├─ cantilever_example/
+├─ cantilever_repo_case/
 ├─ cantilever_geometry/
 ├─ cantilever_static/
 ├─ cantilever_verified/
@@ -51,401 +83,487 @@ artifacts/
 └─ comparison/
 ```
 
-Each saved run should include, where applicable:
+Each run directory should contain, where applicable:
 - the input config,
-- a small machine-readable summary (`json` or `csv`),
+- a small machine-readable summary (`json`, `csv`, or `parquet`),
 - generated plots,
-- enough metadata to tell what code and settings produced the run.
+- basic run metadata (timestamp, dependency versions, machine info, git SHA when available).
 
-## Operating rules for the agent
-- Complete at most one milestone per run.
-- Treat the first unchecked milestone as the active milestone unless the prompt explicitly overrides it.
-- Prefer a small working step over a broad partial implementation.
-- If TACS, MPhys, OpenMDAO, or required dependencies do not install or import, record the exact error in `Blockers` and stop.
-- Do not claim that a result is valid unless the corresponding command actually ran.
-- At the end of every run, update `Current Status`, `Decision Log`, and `Blockers`.
-
-## Current Status
+## Current status
 - Current milestone: M0
-- Overall status: not started
+- Overall status: blocked
 - Last completed milestone: none
-- Next recommended action: implement M0
-- Latest summary: plan rewritten to follow the actual modeling path: environment first, then cantilever example, then project geometry, then loads/constraints/optimization, then the strut case, then comparison.
+- Next recommended action: resolve the local build backend bootstrap so editable installs can run without external package index access
+- Main execution choice: pyTACS shell baseline first, MPhys only after the cantilever baseline is verified
+- Known dependency gap: the geometry seed file referenced in the spec is not present in the uploaded workspace
+
+## Architecture summary
+
+### Early execution path (before OpenMDAO/MPhys)
+`config -> geometry definition -> shell mesh/BDF path -> pyTACS analysis -> artifacts -> verification`
+
+### Later optimization path
+`validated structural model -> MPhys/TacsBuilder -> OpenMDAO problem -> design variables/constraints/objective -> DOE/optimization -> contour plots/tables`
+
+### Strut extension path
+`validated cantilever geometry and loads -> add strut member + connection model -> verify static behavior -> wrap in MPhys/OpenMDAO -> run trade study`
+
+### Module ownership by phase
+- `config/`: validated user inputs and defaults
+- `geometry/`: planform, wing-box parameterization, shell-model/BDF inputs
+- `loads/`: static load cases and sign conventions
+- `analysis/`: pyTACS setup and solve path first; MPhys builder later
+- `postprocess/`: plots, summaries, artifact export
+- `optimization/`: design variables, constraints, driver setup
+- `studies/`: cantilever and strut study orchestration
+- `cli/` and `scripts/`: reproducible command entry points
 
 ## Milestone checklist
-- [ ] M0 - Bring up the TACS + OpenMDAO/MPhys environment and prove imports work
-- [ ] M1 - Run a known cantilever example from the docs and save expected outputs
-- [ ] M2 - Replace the example geometry with the project cantilever wing-box geometry
-- [ ] M3 - Add project cantilever load cases and boundary conditions
-- [ ] M4 - Add initial cantilever design variables and structural constraints
-- [ ] M5 - Verify the cantilever case and lock a baseline set of plots/results
-- [ ] M6 - Wrap the cantilever case in OpenMDAO/MPhys and verify derivatives
-- [ ] M7 - Run the cantilever trade study and generate contour plots
-- [ ] M8 - Create the strut-braced geometry using the cantilever case as the template
-- [ ] M9 - Add strut connections, loads, variables, and a static baseline solve
-- [ ] M10 - Wrap the strut-braced case in OpenMDAO/MPhys and verify derivatives
-- [ ] M11 - Run the strut-braced trade study and generate contour plots
-- [ ] M12 - Compare cantilever and strut-braced results and publish final artifacts
+- [ ] M0 - Bootstrap the Python environment and repo tooling
+- [ ] M1 - Prove TACS, pyTACS, OpenMDAO, and MPhys imports in the repo environment
+- [ ] M2 - Reproduce a documented pyTACS shell cantilever example inside the repo
+- [ ] M3 - Turn the example into a stable repo-owned cantilever runner and artifact pipeline
+- [ ] M4 - Implement the project cantilever wing-box geometry
+- [ ] M5 - Map seed constraints/parameters into internal config and save a baseline snapshot
+- [ ] M6 - Add the first project cantilever static load case and boundary conditions
+- [ ] M7 - Add cantilever design variables and structural constraints
+- [ ] M8 - Verify and lock the cantilever baseline outputs
+- [ ] M9 - Wrap the validated cantilever case in OpenMDAO/MPhys and check derivatives
+- [ ] M10 - Run the cantilever trade study and generate contour plots
+- [ ] M11 - Create the strut-braced geometry from the cantilever template
+- [ ] M12 - Add strut member modeling, loads, variables, and a static baseline solve
+- [ ] M13 - Wrap the strut-braced case in OpenMDAO/MPhys and check derivatives
+- [ ] M14 - Run the strut-braced trade study and generate contour plots
+- [ ] M15 - Compare cantilever and strut-braced results and publish final artifacts
 
 ## Milestones
 
-### M0 - Bring up the TACS + OpenMDAO/MPhys environment and prove imports work
-Status: not started
+### M0 - Bootstrap the Python environment and repo tooling
+Status: blocked
 
-Why this milestone exists:
-Nothing else matters until the solver stack is real and reproducible.
+Goal:
+Create the repository skeleton needed to support a real TACS project and make the developer workflow predictable.
 
 Scope:
-- Add or finalize the Python environment definition needed for this repo.
-- Pin or document the required versions for Python, OpenMDAO, MPhys, TACS, and any plotting/mesh dependencies.
-- Add a smoke-test path that proves the environment works.
-- Add a short environment setup note under `docs/`.
-- Add a CLI or script command that reports whether the required packages are available.
-
-Out of scope:
-- No project geometry yet.
-- No study logic beyond environment verification.
+- Add or finalize `pyproject.toml`.
+- Add `src/` layout, test layout, and minimal package entry points.
+- Add dev tooling: `ruff`, `black`, `mypy`, `pytest`, pre-commit if appropriate.
+- Add a lightweight `doctor` or smoke entry point scaffold.
+- Add a short `README` section or `docs/verification.md` stub for environment setup.
 
 Done when:
-- A clean environment can be created using repo instructions.
-- `openmdao`, `mphys`, and `tacs` import successfully from the repo environment.
-- A smoke test or doctor command passes.
-- Environment notes exist in the repo.
+- Editable install works for the repo package.
+- Lint, test, and type-check commands exist even if there are only minimal tests at first.
+- The repo has a clear package entry point and test layout.
 
 Validation commands:
 - `python -m pip install -e ".[dev]"`
-- `python -c "import openmdao; import mphys; import tacs; print('environment ok')"`
-- `pytest -q tests/integration/test_environment_smoke.py`
+- `pytest -q`
+- `ruff check .`
 - `python -m wing_trade_study.cli.main doctor`
 
-Blocker handling:
-- If TACS or MPhys cannot be installed in the chosen environment, record the exact failure, the platform details, and the next best workaround in `Blockers`, then stop.
+Artifacts:
+- none required beyond repository files
 
-### M1 - Run a known cantilever example from the docs and save expected outputs
+Notes:
+- This milestone is about repo scaffolding only, not solver verification.
+
+### M1 - Prove TACS, pyTACS, OpenMDAO, and MPhys imports in the repo environment
 Status: not started
 
-Why this milestone exists:
-Before changing physics or geometry, prove that a known example works inside this repository.
+Goal:
+Make the solver stack real before any project modeling work begins.
 
 Scope:
-- Choose the closest official or documented cantilever structural example from TACS/MPhys/OpenMDAO materials.
-- Bring that example into this repo in a clear, traceable way.
-- Run it without changing the underlying physics intent.
-- Save the expected outputs to `artifacts/cantilever_example/`.
-- Record the source of the example and any local adaptations.
-
-Out of scope:
-- No project-specific wing geometry yet.
-- No project-specific design variables yet.
+- Add environment instructions and any platform notes discovered during install.
+- Add a smoke test that imports `tacs`, `openmdao`, and `mphys`.
+- Record exact install blockers if they occur.
+- Save a small environment report under `artifacts/env/`.
 
 Done when:
-- The example runs from a documented repo command.
-- Expected output files exist in `artifacts/cantilever_example/`.
-- At minimum, the output folder contains a run summary and the standard plots produced by the example.
-- The lineage of the example is documented.
+- The documented environment can import `tacs`, `openmdao`, and `mphys`.
+- A smoke test passes in the repo.
+- Known platform or MPI requirements are documented.
+
+Validation commands:
+- `python -c "import tacs, openmdao, mphys; print('imports ok')"`
+- `pytest -q tests/integration/test_environment_smoke.py`
+- `python -m wing_trade_study.cli.main doctor --output artifacts/env`
+
+Artifacts:
+- `artifacts/env/` with a machine-readable dependency report or smoke summary
+
+Blocker handling:
+- If TACS or MPhys cannot import, record the exact command and error in `Blockers` and stop.
+
+### M2 - Reproduce a documented pyTACS shell cantilever example inside the repo
+Status: not started
+
+Goal:
+Run one known shell-based cantilever example before changing geometry, loads, or optimization structure.
+
+Scope:
+- Choose a documented pyTACS shell cantilever example or the closest shell-beam benchmark used in the TACS docs/examples.
+- Bring the example into this repository in a traceable way.
+- Run it without changing the underlying physical intent.
+- Save all expected outputs to `artifacts/cantilever_example/`.
+- Document the example source and any local adaptations.
+
+Done when:
+- The example runs from a repo command.
+- The output directory contains the standard solver outputs plus a run summary.
+- The example lineage is documented in code comments or docs.
 
 Validation commands:
 - `pytest -q tests/integration/test_cantilever_example.py`
 - `python scripts/run_cantilever_example.py --output artifacts/cantilever_example`
 
-Notes:
-- “Expected outputs” means the files and qualitative plot types that the documented example is supposed to generate, not hand-entered values.
+Artifacts:
+- `artifacts/cantilever_example/`
 
-### M2 - Replace the example geometry with the project cantilever wing-box geometry
+Notes:
+- Prefer shell examples over beam-only examples because the project intends to use shells from the start.
+
+### M3 - Turn the example into a stable repo-owned cantilever runner and artifact pipeline
 Status: not started
 
-Why this milestone exists:
-Once the example works, the next step is to swap in the actual geometry we care about while keeping the problem simple enough to debug.
+Goal:
+Refactor the reproduced example so it becomes a maintainable repository case instead of a one-off imported script.
 
 Scope:
-- Implement the project cantilever wing planform and wing-box geometry.
-- Use the seed file and project assumptions to define the geometry inputs.
-- Keep the solve path as close to the working example as possible.
-- Save geometry and run artifacts to `artifacts/cantilever_geometry/`.
-
-Out of scope:
-- No full load refinement yet.
-- No optimization study yet.
+- Move the analysis path into the repository package structure.
+- Separate configuration, analysis execution, and artifact export.
+- Add a repeatable script or CLI entry point.
+- Ensure outputs land in the standard artifact location.
 
 Done when:
-- The cantilever case runs using the project wing-box geometry.
-- Geometry-related plots or exported representations are saved.
-- The geometry path is separated cleanly from later load and optimization logic.
+- The repository can run the example case through package-owned code.
+- Output files are saved under `artifacts/cantilever_repo_case/`.
+- The test path covers the repo-owned runner, not only the borrowed example.
+
+Validation commands:
+- `pytest -q tests/integration/test_cantilever_repo_case.py`
+- `python scripts/run_cantilever_repo_case.py --output artifacts/cantilever_repo_case`
+
+Artifacts:
+- `artifacts/cantilever_repo_case/`
+
+### M4 - Implement the project cantilever wing-box geometry
+Status: not started
+
+Goal:
+Replace the borrowed example geometry with the project cantilever geometry while keeping the solve path as unchanged as possible.
+
+Scope:
+- Implement the commuter-class cantilever planform and wing-box geometry.
+- Use shell geometry inputs appropriate for pyTACS/TACS.
+- Keep geometry generation isolated from loads and optimization logic.
+- Save geometry artifacts and a geometry-only run output.
+
+Done when:
+- The repository can build and run the cantilever case using the project geometry.
+- Geometry parameters are explicit and testable.
+- Geometry artifacts exist under `artifacts/cantilever_geometry/`.
 
 Validation commands:
 - `pytest -q tests/unit/test_cantilever_geometry.py`
 - `pytest -q tests/integration/test_cantilever_geometry_smoke.py`
 - `python scripts/run_cantilever_geometry.py --output artifacts/cantilever_geometry`
 
-### M3 - Add project cantilever load cases and boundary conditions
+Artifacts:
+- `artifacts/cantilever_geometry/`
+
+Notes:
+- If the real seed geometry file is later provided, this milestone may absorb its import path; otherwise geometry should be authored directly in the internal schema.
+
+### M5 - Map seed constraints/parameters into internal config and save a baseline snapshot
 Status: not started
 
-Why this milestone exists:
-The project only becomes useful when the cantilever geometry is loaded in a way that reflects the intended study.
+Goal:
+Preserve traceability from the external seed assumptions into repository-owned config objects.
 
 Scope:
-- Implement the first project load cases for the cantilever wing.
-- Define sign conventions, units, and boundary conditions explicitly.
-- Start with the minimum useful static case and add load bookkeeping.
-- Save load summaries and static outputs to `artifacts/cantilever_static/`.
-
-Out of scope:
-- No optimization yet.
-- No strut-braced geometry yet.
+- Map available seed parameter names and constraint concepts into the internal config schema.
+- Save a machine-readable baseline snapshot of the mapped values.
+- Document any unit conversions or assumptions introduced during mapping.
+- If the actual seed geometry file is still unavailable, limit this milestone to the available constraint/helper inputs and clearly record that gap.
 
 Done when:
-- At least one representative cantilever static case runs end to end.
-- The load case definition is saved or reported in a machine-readable form.
-- Force totals and boundary-condition assumptions are documented.
+- The repository contains a traceable parameter/constraint mapping.
+- A baseline snapshot exists for regression use.
+- Gaps between the spec and the available seed file are documented.
+
+Validation commands:
+- `pytest -q tests/unit/test_seed_mapping.py`
+- `python scripts/export_seed_snapshot.py --output artifacts/cantilever_geometry/seed_snapshot.json`
+
+Artifacts:
+- `artifacts/cantilever_geometry/seed_snapshot.json`
+
+### M6 - Add the first project cantilever static load case and boundary conditions
+Status: not started
+
+Goal:
+Create the first useful project-specific cantilever structural solve.
+
+Scope:
+- Define one representative static load case.
+- Make sign conventions, units, and load bookkeeping explicit.
+- Implement the cantilever boundary conditions.
+- Save static results and load summaries.
+
+Done when:
+- One project cantilever static solve runs end to end.
+- The load definition is machine-readable.
+- Load totals and support assumptions are documented.
 
 Validation commands:
 - `pytest -q tests/unit/test_load_cases.py`
 - `pytest -q tests/integration/test_cantilever_static_case.py`
 - `python scripts/run_cantilever_static.py --output artifacts/cantilever_static`
 
-Notes:
-- If load implementation is too large for one run, split this milestone into smaller sub-steps in `Decision Log` before proceeding.
+Artifacts:
+- `artifacts/cantilever_static/`
 
-### M4 - Add initial cantilever design variables and structural constraints
+Notes:
+- Start with the minimum load case needed to make the project meaningful; do not jump directly to a full envelope.
+
+### M7 - Add cantilever design variables and structural constraints
 Status: not started
 
-Why this milestone exists:
-The trade study needs a parameterized structural model, not just a fixed analysis case.
+Goal:
+Expose the first real trade-study knobs on the cantilever model.
 
 Scope:
-- Add the first set of cantilever design variables.
-- Start with the variables that matter most for the spar or wing-box study, such as spar width, spar thickness, and height scale.
-- Implement the first structural constraints needed for a meaningful static sizing run.
-- Support a static case where these variables can be changed through config or model inputs.
-
-Out of scope:
-- No full optimization study yet.
-- No strut-specific variables yet.
+- Add the initial design variables for the cantilever wing box and spar concept.
+- Add structural constraints such as stress and tip deflection.
+- Keep the implementation compatible with later OpenMDAO/MPhys integration.
+- Ensure the static case still runs with the new parameterization.
 
 Done when:
-- The cantilever model exposes design variables for the initial sizing study.
-- Static outputs include at least structural mass, a governing stress or failure measure, and a displacement measure.
-- Constraint values are reported clearly for the baseline run.
+- Design variables can be changed without editing solver internals.
+- Structural constraints are represented in a clear, testable way.
+- A static run with those variables and constraints still produces artifacts.
 
 Validation commands:
-- `pytest -q tests/unit/test_cantilever_design_variables.py`
-- `pytest -q tests/integration/test_cantilever_sizing_case.py`
-- `python scripts/run_cantilever_sizing_case.py --output artifacts/cantilever_static`
+- `pytest -q tests/unit/test_design_vars.py`
+- `pytest -q tests/unit/test_constraints.py`
+- `pytest -q tests/integration/test_cantilever_parametric_static.py`
+- `python scripts/run_cantilever_static.py --config examples/minimal_cantilever.yaml --output artifacts/cantilever_static`
 
-### M5 - Verify the cantilever case and lock a baseline set of plots/results
+Artifacts:
+- updated `artifacts/cantilever_static/`
+
+### M8 - Verify and lock the cantilever baseline outputs
 Status: not started
 
-Why this milestone exists:
-Before optimizing anything, the baseline case needs a verification pass and a stable output package.
+Goal:
+Promote the cantilever case from “runs” to “trusted enough to build on.”
 
 Scope:
-- Review the baseline cantilever outputs for obvious errors or nonphysical behavior.
-- Add the standard plots that should exist for every main case.
-- Save a baseline package that later milestones can compare against.
-- Add regression tolerances where practical.
-
-Standard plots to generate:
-- geometry or mesh view,
-- deformed shape,
-- stress or failure metric view,
-- selected design-variable distribution,
-- a compact summary plot or table for mass and deflection.
-
-Out of scope:
-- No gradient-based optimization yet.
+- Add baseline regression summaries for mass, representative stress outputs, and deflection outputs.
+- Save standard plots and postprocessed summaries.
+- Document what is trusted and what is still provisional.
+- Freeze a baseline artifact set for later comparison.
 
 Done when:
-- `artifacts/cantilever_verified/` contains the baseline run package.
-- The required plots are present.
-- At least one regression or baseline check is added.
+- The cantilever case has a repeatable baseline run.
+- Baseline plots and machine-readable summaries exist under `artifacts/cantilever_verified/`.
+- Regression tolerances are documented.
 
 Validation commands:
 - `pytest -q tests/regression/test_cantilever_baseline.py`
 - `python scripts/export_cantilever_baseline.py --output artifacts/cantilever_verified`
 
-### M6 - Wrap the cantilever case in OpenMDAO/MPhys and verify derivatives
+Artifacts:
+- `artifacts/cantilever_verified/`
+
+### M9 - Wrap the validated cantilever case in OpenMDAO/MPhys and check derivatives
 Status: not started
 
-Why this milestone exists:
-The optimizer and contour studies need a working MPhys/OpenMDAO problem with trustworthy derivatives.
+Goal:
+Only after the cantilever baseline is trusted, add the optimization architecture layer.
 
 Scope:
-- Build the cantilever OpenMDAO/MPhys model around the working TACS case.
-- Register the initial design variables, objective, and constraints.
-- Run derivative checks at the level that makes sense for the model.
-- Keep the setup understandable and separate from study scripts.
-
-Out of scope:
-- No large parameter sweep yet.
+- Wrap the working cantilever structural model using MPhys/TacsBuilder and repository-owned OpenMDAO groups.
+- Connect design variables, constraints, and objective.
+- Add derivative checks and document acceptable tolerances.
 
 Done when:
-- The cantilever case runs through OpenMDAO/MPhys.
-- Derivative checks execute and are recorded.
-- The repo contains a clear run path for the cantilever optimization problem.
+- The cantilever case runs through an OpenMDAO/MPhys path.
+- `check_partials` or `check_totals` runs and the result is recorded.
+- The repository has a stable optimization entry point for the cantilever case.
 
 Validation commands:
-- `pytest -q tests/integration/test_mphys_cantilever.py`
-- `python scripts/check_cantilever_derivatives.py --output artifacts/cantilever_verified`
-- `python scripts/run_cantilever_optimization.py --max-iter 3 --output artifacts/cantilever_verified`
+- `pytest -q tests/integration/test_mphys_cantilever_setup.py`
+- `python scripts/check_cantilever_derivatives.py --output artifacts/cantilever_verified/derivatives`
 
-### M7 - Run the cantilever trade study and generate contour plots
+Artifacts:
+- derivative report under `artifacts/cantilever_verified/derivatives/`
+
+Notes:
+- Do not add MPhys earlier than this milestone unless a blocker requires that change and the reason is recorded.
+
+### M10 - Run the cantilever trade study and generate contour plots
 Status: not started
 
-Why this milestone exists:
-This is the first milestone that produces the decision-style plots the project is meant to deliver.
+Goal:
+Produce the first decision-usable trade-space outputs for the cantilever architecture.
 
 Scope:
-- Run a cantilever trade study over selected design-variable pairs.
-- Generate contour plots of structural weight and other key outputs.
-- Include at least one plot family centered on spar width vs spar thickness.
-- Add other useful views if they show meaningful trends, such as height scale vs thickness or stress margin vs mass.
-- Save raw study outputs and plots to `artifacts/cantilever_trade/`.
-
-Out of scope:
-- No strut-braced case yet.
+- Implement the cantilever study driver.
+- Run a grid or DOE over the primary cantilever variables.
+- Generate contour plots for structural mass and key active constraints.
+- Save machine-readable study outputs and figures.
 
 Done when:
-- The repo can generate at least one informative contour family for the cantilever case.
-- Saved outputs are sufficient to reproduce the plots without rerunning the solver logic by hand.
-- Plot file names and folders are consistent.
+- The cantilever study can be launched from a repo command.
+- At least one contour family is generated and saved.
+- The outputs are sufficient to discuss trends rather than only a single optimum.
 
 Validation commands:
 - `pytest -q tests/integration/test_cantilever_trade_study.py`
-- `python scripts/run_cantilever_trade_study.py --output artifacts/cantilever_trade`
+- `python scripts/run_cantilever_trade.py --output artifacts/cantilever_trade`
 
-### M8 - Create the strut-braced geometry using the cantilever case as the template
+Artifacts:
+- `artifacts/cantilever_trade/`
+
+### M11 - Create the strut-braced geometry from the cantilever template
 Status: not started
 
-Why this milestone exists:
-The strut-braced model should reuse as much as possible from the working cantilever case rather than starting over.
+Goal:
+Build the strut-braced case by extending the validated cantilever case, not by starting over.
 
 Scope:
-- Copy or extend the cantilever structural case into a strut-braced geometry path.
-- Add the strut geometry and attachment definition.
-- Represent the strut with a simple, explicit structural model first, such as a 1D member or equivalent element attached to the wing box.
-- Save geometry artifacts to `artifacts/strut_geometry/`.
-
-Out of scope:
-- No full strut optimization yet.
-- No final comparison yet.
+- Copy the cantilever geometry path and extend it with strut geometry inputs.
+- Define the initial strut representation and attachment locations.
+- Keep the strut representation simple enough to debug.
+- Save geometry outputs for the strut case.
 
 Done when:
-- The strut-braced geometry path is created and runs a geometry-level smoke test.
-- The strut representation is documented clearly.
-- Geometry outputs are saved in the expected folder.
+- The repository can build the strut-braced geometry using the cantilever case as its basis.
+- Geometry artifacts exist under `artifacts/strut_geometry/`.
+- The strut path is cleanly separated from the cantilever path without duplicating common code unnecessarily.
 
 Validation commands:
 - `pytest -q tests/unit/test_strut_geometry.py`
 - `pytest -q tests/integration/test_strut_geometry_smoke.py`
 - `python scripts/run_strut_geometry.py --output artifacts/strut_geometry`
 
-### M9 - Add strut connections, loads, variables, and a static baseline solve
+Artifacts:
+- `artifacts/strut_geometry/`
+
+Notes:
+- The first strut model may be a 1D member attached to the wing box if that is the most stable implementation path.
+
+### M12 - Add strut member modeling, loads, variables, and a static baseline solve
 Status: not started
 
-Why this milestone exists:
-The strut case becomes a real study case only after the connections, loads, and design variables are active.
+Goal:
+Make the strut-braced case physically meaningful enough for comparison.
 
 Scope:
-- Add the strut load path, connections, and boundary-condition handling.
-- Implement the first strut-braced design variables.
-- Reuse shared reporting outputs where possible so the strut case stays comparable to the cantilever case.
-- Run a static baseline solve and save results to `artifacts/strut_static/`.
-
-Out of scope:
-- No strut optimization study yet.
+- Add the initial strut member behavior and connection assumptions.
+- Add the matching load case and boundary conditions.
+- Add strut-specific design variables and constraints.
+- Run the first complete static strut baseline.
 
 Done when:
-- A strut-braced static case runs end to end.
-- The saved outputs include structural mass, stress or failure, and displacement metrics.
-- The strut and cantilever result summaries are directly comparable.
+- The strut-braced case runs statically from config to artifacts.
+- The output summary makes the strut assumptions explicit.
+- The result is suitable to use as a baseline before MPhys wrapping.
 
 Validation commands:
 - `pytest -q tests/integration/test_strut_static_case.py`
+- `pytest -q tests/unit/test_strut_design_vars.py`
 - `python scripts/run_strut_static.py --output artifacts/strut_static`
 
-### M10 - Wrap the strut-braced case in OpenMDAO/MPhys and verify derivatives
+Artifacts:
+- `artifacts/strut_static/`
+
+### M13 - Wrap the strut-braced case in OpenMDAO/MPhys and check derivatives
 Status: not started
 
-Why this milestone exists:
-The strut case needs the same optimization and sensitivity path as the cantilever case before it can be studied fairly.
+Goal:
+Bring the strut case up to the same optimization architecture level as the cantilever case.
 
 Scope:
-- Build the OpenMDAO/MPhys path for the strut-braced case.
-- Register its design variables, objective, and constraints.
-- Run derivative checks for representative strut-braced points.
-- Reuse shared optimization plumbing where practical.
-
-Out of scope:
-- No final contour sweep yet.
+- Create the strut OpenMDAO/MPhys wrapper.
+- Connect the strut variables, constraints, and objective.
+- Run derivative checks and record tolerances.
 
 Done when:
-- The strut-braced case runs through OpenMDAO/MPhys.
-- Derivative checks execute and are documented.
-- The strut optimization path mirrors the cantilever path closely enough for fair comparison.
+- The strut case runs through the OpenMDAO/MPhys path.
+- Derivative checks are documented and artifacts are saved.
 
 Validation commands:
-- `pytest -q tests/integration/test_mphys_strut.py`
-- `python scripts/check_strut_derivatives.py --output artifacts/strut_static`
-- `python scripts/run_strut_optimization.py --max-iter 3 --output artifacts/strut_static`
+- `pytest -q tests/integration/test_mphys_strut_setup.py`
+- `python scripts/check_strut_derivatives.py --output artifacts/strut_static/derivatives`
 
-### M11 - Run the strut-braced trade study and generate contour plots
+Artifacts:
+- derivative report under `artifacts/strut_static/derivatives/`
+
+### M14 - Run the strut-braced trade study and generate contour plots
 Status: not started
 
-Why this milestone exists:
-The strut-braced study needs the same style of output package as the cantilever study.
+Goal:
+Generate the same class of decision-usable outputs for the strut architecture.
 
 Scope:
-- Run the strut-braced trade study.
-- Generate contour plots and study outputs tailored to the strut case and its additional variables.
-- Keep at least one contour family directly comparable to the cantilever study.
-- Save outputs to `artifacts/strut_trade/`.
-
-Out of scope:
-- No final narrative comparison yet.
+- Implement the strut trade-study driver.
+- Run the selected study grid or DOE.
+- Generate contour plots and summary tables.
+- Save all outputs in the standard location.
 
 Done when:
-- The repo can generate contour plots for the strut-braced case.
-- At least one design-variable pair is directly comparable to the cantilever study.
-- Additional strut-specific plots are included where they add insight.
+- The strut trade study runs from a documented repo command.
+- At least one contour family is produced for the strut case.
+- Results are organized for direct comparison with the cantilever outputs.
 
 Validation commands:
 - `pytest -q tests/integration/test_strut_trade_study.py`
-- `python scripts/run_strut_trade_study.py --output artifacts/strut_trade`
+- `python scripts/run_strut_trade.py --output artifacts/strut_trade`
 
-### M12 - Compare cantilever and strut-braced results and publish final artifacts
+Artifacts:
+- `artifacts/strut_trade/`
+
+### M15 - Compare cantilever and strut-braced results and publish final artifacts
 Status: not started
 
-Why this milestone exists:
-This is the point of the project: turn the two studies into a direct engineering comparison.
+Goal:
+Turn two separate studies into a decision-ready comparison.
 
 Scope:
-- Gather the final cantilever and strut-braced results.
-- Create tables and plots that compare structural weight, governing constraints, and sensitivity trends.
-- State where the strut helps, where it hurts, and where the answer is still uncertain.
-- Save the final comparison package to `artifacts/comparison/`.
-- Document the commands needed to reproduce the headline results.
-
-Out of scope:
-- No new physics fidelity unless it is required to finish the comparison package.
+- Create side-by-side summary tables.
+- Compare best-feasible designs, active constraints, and sensitivity trends.
+- Save a final comparison package and concise written interpretation.
+- Document what is trusted, what is provisional, and what the next fidelity upgrade should be.
 
 Done when:
-- The repo produces a direct cantilever vs strut comparison from saved study outputs.
-- The comparison includes quantitative statements supported by saved artifacts.
-- Reproduction commands are documented and tested.
-- Another engineer can run the key study paths from the repo instructions.
+- The repository produces a final comparison artifact set.
+- The summary can answer the top-level project question with quantitative support.
+- The final docs explain assumptions, limitations, and next steps.
 
 Validation commands:
-- `pytest -q`
-- `python scripts/build_comparison_report.py --cantilever artifacts/cantilever_trade --strut artifacts/strut_trade --output artifacts/comparison`
+- `pytest -q tests/integration/test_final_comparison_artifacts.py`
+- `python scripts/export_final_comparison.py --cantilever artifacts/cantilever_trade --strut artifacts/strut_trade --output artifacts/comparison`
 
-## Decision Log
-- 2026-03-21: Rewrote the plan so the milestones follow the actual engineering path: environment -> known cantilever example -> project cantilever model -> verification -> cantilever optimization/trade study -> strut model -> strut optimization/trade study -> comparison.
-- 2026-03-21: The first trusted solver result must come from a reproduced known example before the project-specific geometry is introduced.
-- 2026-03-21: The strut will initially be modeled with a simpler explicit structural representation rather than waiting for a high-fidelity strut model.
-- 2026-03-21: Trade-study plots should be saved as artifacts, not rebuilt manually after the fact.
+Artifacts:
+- `artifacts/comparison/`
+
+## Decision log
+- Added a lightweight top-level `wing_trade_study` package shim so `python -m wing_trade_study.cli.main ...` works from a source checkout before editable install succeeds.
+- Kept solver dependency probing in `doctor` as an explicit availability check that returns machine-readable status and nonzero exit when the solver stack is unavailable.
 
 ## Blockers
-- None recorded yet.
+- The geometry seed file referenced in `docs/spec.md` is not currently present in the uploaded workspace. Current uploaded file `openmdao_constraint.py` is only a minimal constraint helper.
+- `python -m pip install -e ".[dev]"` fails in this environment because pip cannot reach the package index and cannot install build requirements (`setuptools>=68`).
+- `python -m pip install -e ".[dev]" --no-build-isolation` also fails because the interpreter image does not have `setuptools` installed (`BackendUnavailable: Cannot import 'setuptools.build_meta'`).
 
-## Next Milestone Notes
-M0 should focus only on making the TACS + MPhys + OpenMDAO stack usable in this repo. Do not start project geometry or optimization work until the environment and imports are proven.
+## Rules for updating this file after each run
+At the end of every Codex run:
+1. Mark the milestone status accurately.
+2. Update `Current status`.
+3. Append any modeling or architecture choices to `Decision log`.
+4. Record exact failing commands or missing dependencies in `Blockers`.
+5. Set the next recommended action.
