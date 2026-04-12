@@ -5,6 +5,12 @@ A trade study on strut-braced and cantilever configurations of a 19-passenger ut
 ## Environment quickstart
 
 ```bash
+scripts/install_environment.sh
+```
+
+Equivalent manual commands:
+
+```bash
 python -m pip install -U pip
 python -m pip install -e ".[dev]"
 python -m wing_trade_study.cli.main doctor
