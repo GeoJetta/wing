@@ -4,12 +4,28 @@ This project requires a Python 3.11+ environment with OpenMDAO, MPhys, and TACS 
 
 ## Setup
 
+Preferred one-command bootstrap:
+
+```bash
+scripts/install_environment.sh
+```
+
+Manual equivalent:
+
 ```bash
 python -m pip install -U pip
 python -m pip install -e ".[dev]"
 ```
 
 ## Verify
+
+
+### Offline or managed-environment variants
+
+```bash
+scripts/install_environment.sh --wheelhouse /path/to/wheelhouse
+scripts/install_environment.sh --no-build-isolation
+```
 
 Run the direct import smoke check:
 

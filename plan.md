@@ -93,7 +93,7 @@ Each run directory should contain, where applicable:
 - Current milestone: M0
 - Overall status: blocked
 - Last completed milestone: none
-- Next recommended action: resolve the local build backend bootstrap so editable installs can run without external package index access
+- Next recommended action: run `scripts/install_environment.sh` (or its `--wheelhouse`/`--no-build-isolation` variants) to bootstrap dependencies and then proceed to M1 solver import proof
 - Main execution choice: pyTACS shell baseline first, MPhys only after the cantilever baseline is verified
 - Known dependency gap: the geometry seed file referenced in the spec is not present in the uploaded workspace
 
@@ -554,6 +554,7 @@ Artifacts:
 ## Decision log
 - Added a lightweight top-level `wing_trade_study` package shim so `python -m wing_trade_study.cli.main ...` works from a source checkout before editable install succeeds.
 - Kept solver dependency probing in `doctor` as an explicit availability check that returns machine-readable status and nonzero exit when the solver stack is unavailable.
+- Added `scripts/install_environment.sh` to provide a single-command environment bootstrap with explicit options for wheelhouse/offline and no-build-isolation installs, aligned with M0 dependency setup needs.
 
 ## Blockers
 - The geometry seed file referenced in `docs/spec.md` is not currently present in the uploaded workspace. Current uploaded file `openmdao_constraint.py` is only a minimal constraint helper.
